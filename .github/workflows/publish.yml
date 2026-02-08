@@ -50,9 +50,13 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import os
-          import tomllib
+          import re
 
-          version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          content = Path("pyproject.toml").read_text(encoding="utf-8")
+          match = re.search(r'(?m)^\s*version\s*=\s*"([^"]+)"\s*$', content)
+          if not match:
+              raise SystemExit("Unable to determine project version from pyproject.toml.")
+          version = match.group(1)
           ref_name = os.getenv("REF_NAME", "")
           ref_type = os.getenv("REF_TYPE", "")
           event_name = os.getenv("EVENT_NAME", "")
