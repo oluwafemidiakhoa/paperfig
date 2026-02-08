@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.2] - 2026-02-08
+- Fixed GitHub Actions script invocation by running shell scripts through `bash` in CI, docs-drift, and publish workflows.
+- Added release hygiene to keep workflow and tag behavior consistent for PyPI publishing.
+
 ## [0.2.0] - 2026-02-08
 - Added architecture governance with docs regeneration and drift gates.
 - Added reusable YAML flow templates with expanded built-in figure pack.
