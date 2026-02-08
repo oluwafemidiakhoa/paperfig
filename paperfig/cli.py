@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import importlib
 import json
+import os
 from pathlib import Path
+import shlex
+import shutil
 from typing import Optional
 
 import typer
 
+from paperfig import __version__
 from paperfig.agents.architecture_critic import SEVERITY_ORDER
 from paperfig.agents.critic import CriticAgent
 from paperfig.command_catalog import get_command_catalog
@@ -13,6 +18,7 @@ from paperfig.lab.orchestrator import LabOrchestrator
 from paperfig.pipeline.orchestrator import Orchestrator
 from paperfig.templates.loader import load_template_catalog, validate_template_catalog
 from paperfig.utils.config import load_config
+from paperfig.utils.paperbanana import PaperBananaClient
 from paperfig.utils.pdf_parser import parse_paper
 from paperfig.utils.types import FigurePlan, PaperContent, PaperSection
 
@@ -26,6 +32,25 @@ app.add_typer(templates_app, name="templates")
 app.add_typer(lab_app, name="lab")
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show paperfig version and exit.",
+    ),
+) -> None:
+    del version
+
+
 def _lab_orchestrator() -> LabOrchestrator:
     config = load_config()
     lab_cfg = config.get("lab", {})
@@ -36,9 +61,163 @@ def _lab_orchestrator() -> LabOrchestrator:
     )
 
 
+def _dependency_check(module_name: str, required: bool) -> dict:
+    try:
+        importlib.import_module(module_name)
+        return {
+            "check": f"python_module:{module_name}",
+            "status": "ok",
+            "required": required,
+            "message": f"Module '{module_name}' is importable.",
+        }
+    except Exception as exc:
+        status = "fail" if required else "warn"
+        return {
+            "check": f"python_module:{module_name}",
+            "status": status,
+            "required": required,
+            "message": f"Module '{module_name}' is unavailable: {exc}",
+        }
+
+
+def _mcp_check(probe_mcp: bool) -> dict:
+    if os.getenv("PAPERFIG_MOCK_PAPERBANANA", "0") == "1":
+        return {
+            "check": "paperbanana_mcp",
+            "status": "ok",
+            "required": False,
+            "message": "Mock mode is enabled (PAPERFIG_MOCK_PAPERBANANA=1); real MCP probe skipped.",
+        }
+
+    server = os.getenv("PAPERFIG_MCP_SERVER", "").strip()
+    factory = os.getenv("PAPERFIG_MCP_CLIENT_FACTORY", "").strip()
+    command = os.getenv("PAPERFIG_MCP_COMMAND", "").strip()
+
+    if not server:
+        return {
+            "check": "paperbanana_mcp",
+            "status": "warn",
+            "required": False,
+            "message": "PAPERFIG_MCP_SERVER is not configured.",
+        }
+
+    if not factory and not command:
+        return {
+            "check": "paperbanana_mcp",
+            "status": "warn",
+            "required": False,
+            "message": "No MCP transport configured. Set PAPERFIG_MCP_CLIENT_FACTORY or PAPERFIG_MCP_COMMAND.",
+        }
+
+    if command:
+        command_parts = shlex.split(command)
+        command_bin = command_parts[0] if command_parts else ""
+        if not command_bin:
+            return {
+                "check": "paperbanana_mcp",
+                "status": "fail",
+                "required": False,
+                "message": "PAPERFIG_MCP_COMMAND is set but empty after parsing.",
+            }
+        if shutil.which(command_bin) is None:
+            return {
+                "check": "paperbanana_mcp",
+                "status": "fail",
+                "required": False,
+                "message": f"MCP command binary '{command_bin}' is not on PATH.",
+            }
+
+    if not probe_mcp:
+        return {
+            "check": "paperbanana_mcp",
+            "status": "ok",
+            "required": False,
+            "message": "MCP configuration detected. Run `paperfig doctor --probe-mcp` for an end-to-end probe.",
+        }
+
+    try:
+        client = PaperBananaClient()
+        client.generate_svg(
+            {
+                "figure_id": "doctor-probe",
+                "title": "doctor-probe",
+                "kind": "system_overview",
+                "description": "Connectivity probe",
+                "abstraction_level": "high",
+                "source_text": {"methodology": "", "system": "", "results": ""},
+                "source_spans": [],
+                "style_refs": {},
+                "critique_feedback": {},
+                "iteration": 1,
+            }
+        )
+        return {
+            "check": "paperbanana_mcp",
+            "status": "ok",
+            "required": False,
+            "message": "MCP probe succeeded via `paperbanana.generate`.",
+        }
+    except Exception as exc:
+        return {
+            "check": "paperbanana_mcp",
+            "status": "fail",
+            "required": False,
+            "message": f"MCP probe failed: {exc}",
+        }
+
+
+def _render_doctor_output(report: dict) -> None:
+    checks = report.get("checks", [])
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="paperfig doctor")
+        table.add_column("Check", justify="left")
+        table.add_column("Status", justify="left")
+        table.add_column("Required", justify="center")
+        table.add_column("Message", justify="left")
+
+        status_style = {"ok": "green", "warn": "yellow", "fail": "red"}
+        for check in checks:
+            status = str(check.get("status", "warn"))
+            table.add_row(
+                str(check.get("check", "")),
+                f"[{status_style.get(status, 'white')}]{status}[/{status_style.get(status, 'white')}]",
+                "yes" if check.get("required", False) else "no",
+                str(check.get("message", "")),
+            )
+
+        console = Console()
+        console.print(table)
+        console.print(
+            f"Overall: {'PASS' if report.get('passed') else 'FAIL'} "
+            f"(required failures: {report.get('required_failures', 0)}, "
+            f"optional failures: {report.get('optional_failures', 0)})"
+        )
+    except Exception:
+        typer.echo("paperfig doctor")
+        for check in checks:
+            typer.echo(
+                f"- {check.get('check')}: {check.get('status')} "
+                f"(required={check.get('required')}) {check.get('message')}"
+            )
+        typer.echo(
+            "Overall: "
+            f"{'PASS' if report.get('passed') else 'FAIL'} "
+            f"(required failures: {report.get('required_failures', 0)}, "
+            f"optional failures: {report.get('optional_failures', 0)})"
+        )
+
+
 @app.command()
 def generate(
     paper_path: Path = typer.Argument(..., exists=True, help="Path to paper PDF or Markdown"),
+    mode: str = typer.Option(
+        "auto",
+        "--mode",
+        help="PaperBanana execution mode: auto, mock, or real.",
+    ),
     run_root: Path = typer.Option(Path("runs"), help="Root directory for run outputs"),
     max_iterations: int = typer.Option(3, help="Maximum generation iterations per figure"),
     quality_threshold: float = typer.Option(0.75, help="Minimum critique score to accept a figure"),
@@ -63,6 +242,8 @@ def generate(
         help="Reproducibility audit mode: soft or hard.",
     ),
 ) -> None:
+    if mode not in {"auto", "mock", "real"}:
+        raise typer.BadParameter("mode must be one of: auto, mock, real")
     if arch_critique_mode not in {"inline", "off"}:
         raise typer.BadParameter("arch_critique_mode must be one of: inline, off")
     if arch_critique_block_severity not in SEVERITY_ORDER:
@@ -72,21 +253,33 @@ def generate(
     if repro_audit_mode not in {"soft", "hard"}:
         raise typer.BadParameter("repro_audit_mode must be one of: soft, hard")
 
-    orchestrator = Orchestrator(
-        run_root=run_root,
-        max_iterations=max_iterations,
-        quality_threshold=quality_threshold,
-        dimension_threshold=dimension_threshold,
-        template_pack=template_pack,
-        arch_critique_mode=arch_critique_mode,
-        arch_critique_block_severity=arch_critique_block_severity,
-        repro_audit_mode=repro_audit_mode,
-    )
+    previous_mock_mode = os.getenv("PAPERFIG_MOCK_PAPERBANANA")
+    if mode == "mock":
+        os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+    elif mode == "real":
+        os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "0"
+
     try:
+        orchestrator = Orchestrator(
+            run_root=run_root,
+            max_iterations=max_iterations,
+            quality_threshold=quality_threshold,
+            dimension_threshold=dimension_threshold,
+            template_pack=template_pack,
+            arch_critique_mode=arch_critique_mode,
+            arch_critique_block_severity=arch_critique_block_severity,
+            repro_audit_mode=repro_audit_mode,
+        )
         run_id = orchestrator.generate(paper_path)
     except RuntimeError as exc:
         typer.echo(f"Generation failed: {exc}")
         raise typer.Exit(code=1)
+    finally:
+        if mode in {"mock", "real"}:
+            if previous_mock_mode is None:
+                os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+            else:
+                os.environ["PAPERFIG_MOCK_PAPERBANANA"] = previous_mock_mode
 
     typer.echo(f"Run created: {run_id}")
     typer.echo(f"Output directory: {run_root / run_id}")
@@ -146,6 +339,54 @@ def export(
         report = json.loads(report_path.read_text(encoding="utf-8"))
         for warning in report.get("warnings", []):
             typer.echo(f"Warning: {warning}")
+
+
+@app.command()
+def doctor(
+    as_json: bool = typer.Option(False, "--as-json", help="Print doctor report as JSON."),
+    probe_mcp: bool = typer.Option(
+        False,
+        "--probe-mcp",
+        help="Attempt an end-to-end PaperBanana MCP probe.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Exit non-zero if any check reports failure.",
+    ),
+) -> None:
+    checks = [
+        _dependency_check("typer", required=True),
+        _dependency_check("rich", required=False),
+        _dependency_check("cairosvg", required=False),
+        _mcp_check(probe_mcp=probe_mcp),
+    ]
+
+    required_failures = sum(
+        1 for check in checks if check.get("required", False) and check.get("status") == "fail"
+    )
+    optional_failures = sum(
+        1 for check in checks if not check.get("required", False) and check.get("status") == "fail"
+    )
+
+    report = {
+        "version": __version__,
+        "checks": checks,
+        "probe_mcp": probe_mcp,
+        "required_failures": required_failures,
+        "optional_failures": optional_failures,
+        "passed": required_failures == 0,
+    }
+
+    if as_json:
+        typer.echo(json.dumps(report, indent=2))
+    else:
+        _render_doctor_output(report)
+
+    if required_failures > 0:
+        raise typer.Exit(code=1)
+    if strict and optional_failures > 0:
+        raise typer.Exit(code=1)
 
 
 @app.command(name="critique-architecture")

@@ -8,6 +8,7 @@ def get_command_catalog() -> List[str]:
         "generate",
         "critique",
         "export",
+        "doctor",
         "inspect",
         "docs regenerate",
         "docs check",

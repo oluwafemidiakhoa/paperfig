@@ -10,6 +10,30 @@
       ]
     },
     {
+      "path": "CHANGELOG.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Changelog",
+        "## [0.2.0] - 2026-02-08"
+      ]
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Contributing",
+        "## Contributing Ladder"
+      ]
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Code of Conduct",
+        "## Our Standards"
+      ]
+    },
+    {
       "path": "docs/architecture/AI-Architecture-Analysis.md",
       "mode": "validated",
       "required_sections": [

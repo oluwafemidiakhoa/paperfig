@@ -1,0 +1,10 @@
+repository:
+  description: "Inspectable agentic pipeline that turns papers into publication-ready figures (SVG/PNG/LaTeX) with audits and traceability."
+  topics:
+    - agentic
+    - research-tools
+    - scientific-figures
+    - vlm
+    - mcp
+    - cli
+    - reproducibility

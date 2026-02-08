@@ -1,8 +1,64 @@
 # paperfig
-[![CI Workflow](https://img.shields.io/badge/CI-workflow-blue?logo=githubactions)](.github/workflows/ci.yml)
-[![Docs Drift Workflow](https://img.shields.io/badge/Docs%20Drift-workflow-blue?logo=githubactions)](.github/workflows/docs-drift.yml)
+[![CI](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/ci.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/ci.yml)
+[![Docs Drift](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/docs-drift.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/docs-drift.yml)
+[![Publish](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/publish.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/publish.yml)
 
-`paperfig` is a production-grade CLI that converts research papers (PDF or Markdown) into publication-ready academic figures using an agentic planning -> generation -> critique pipeline. It outputs SVG, transparent PNG, LaTeX include snippets, captions, and full traceability mappings from figure elements back to source text spans.
+`paperfig` is a production-grade CLI that converts research papers (PDF or Markdown) into publication-ready academic figures using an agentic planning -> generation -> critique pipeline.
+
+The core differentiator is that agent reasoning and architecture decisions are stored as versioned repo artifacts (architecture docs, flows, Mermaid diagrams, templates, audits) so humans and agents can evolve the system together.
+
+## Install
+- Standard CLI + PNG export:
+  - `pip install "paperfig[cli,png]"`
+- Developer tooling:
+  - `pip install "paperfig[cli,png,dev,yaml,pdf,mcp]"`
+- CLI-first local install:
+  - `pipx install .`
+  - `uv tool install .`
+
+## Quickstart (Mock Mode, No Keys)
+Mock mode is designed for instant local runs and realistic output artifacts.
+
+```bash
+pip install "paperfig[cli,png]"
+paperfig doctor
+paperfig generate examples/sample_paper.md --mode mock
+paperfig docs check
+```
+
+## 1-Minute Demo
+```bash
+pip install "paperfig[cli,png]"
+paperfig doctor
+paperfig generate examples/sample_paper.md --mode mock
+ls runs/*/figures/*/final/figure.svg
+```
+
+## Full Mode (PaperBanana MCP)
+Use full mode when you want real PaperBanana generation via MCP.
+
+```bash
+pip install "paperfig[cli,png,mcp]"
+export PAPERFIG_MCP_SERVER=paperbanana
+export PAPERFIG_MCP_COMMAND="python -m your_mcp_server"
+paperfig doctor --probe-mcp
+paperfig generate examples/sample_paper.md --mode real
+```
+
+## What You Get
+- Generated figures (SVG and optional transparent PNG)
+- LaTeX include snippets
+- Captions and figure plans
+- Traceability mapping from figure elements to source text spans
+- Governance artifacts (`docs_drift_report.json`, `architecture_critique.json`, `repro_audit.json`)
+
+Sample proof assets are committed in `docs/gallery/sample_paper`:
+- `docs/gallery/sample_paper/fig-21a078a0.svg`
+- `docs/gallery/sample_paper/plan.json`
+- `docs/gallery/sample_paper/repro_audit.json`
+- `docs/gallery/sample_paper/architecture_critique.json`
+
+![Sample methodology figure](docs/gallery/sample_paper/fig-21a078a0.svg)
 
 ## What It Does
 - Parses papers and extracts methodology, system description, and results sections.
@@ -26,6 +82,7 @@ Full architecture documentation and flow diagrams live in `docs/architecture`.
 - `paperfig generate`
 - `paperfig critique`
 - `paperfig export`
+- `paperfig doctor`
 - `paperfig inspect`
 - `paperfig docs regenerate`
 - `paperfig docs check`
@@ -78,8 +135,17 @@ Default config lives in `paperfig.yaml`:
 
 ## CI
 - GitHub Actions pipeline: `.github/workflows/ci.yml`
+- GitHub Actions docs drift gate: `.github/workflows/docs-drift.yml`
+- GitHub Actions PyPI publish: `.github/workflows/publish.yml`
+- Publish workflow expects `PYPI_API_TOKEN` secret in GitHub environment `pypi`.
 - GitLab pipeline: `.gitlab-ci.yml`
-- Both use the same quality gate script: `./scripts/check_quality.sh`
+- All wrappers call shared scripts in `scripts/` (no duplicated CI logic in YAML)
+
+## Community
+- Changelog: `CHANGELOG.md`
+- Contributing: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Citation metadata: `CITATION.cff`
 
 ## Architecture Docs
 See:

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "paperfig"
+message: "If you use paperfig in your research, please cite this software."
+type: software
+authors:
+  - family-names: "paperfig"
+    given-names: "contributors"
+version: "0.2.0"
+date-released: 2026-02-08
+license: MIT
+repository-code: "https://github.com/oluwafemidiakhoa/paperfig"
+url: "https://github.com/oluwafemidiakhoa/paperfig"
+keywords:
+  - agentic
+  - scientific-figures
+  - reproducibility
+  - mcp

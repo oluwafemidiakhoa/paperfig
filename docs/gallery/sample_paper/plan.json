@@ -1,0 +1,92 @@
+[
+  {
+    "figure_id": "fig-21a078a0",
+    "title": "Methodology Pipeline",
+    "kind": "methodology",
+    "order": 1,
+    "abstraction_level": "high",
+    "description": "Template-driven figure using methodology_pipeline.",
+    "justification": "Selected by template 'methodology_pipeline' based on required sections and trigger rules.",
+    "template_id": "methodology_pipeline",
+    "source_spans": [
+      {
+        "section": "methodology",
+        "start": 0,
+        "end": 518,
+        "quote": "# Sample Paper\n\n## 1 Methodology\nWe propose a three-stage pipeline: preprocess data, encode observations, and decode outputs.\nThe method uses attention and residual links.\n\n## 2 System Architecture\nThe system has four modules: parser, planner, generator, and critic.\nData flows from parser to planner"
+      }
+    ]
+  },
+  {
+    "figure_id": "fig-e6b01ce4",
+    "title": "System Overview",
+    "kind": "system_overview",
+    "order": 2,
+    "abstraction_level": "high",
+    "description": "Template-driven figure using system_overview.",
+    "justification": "Selected by template 'system_overview' based on required sections and trigger rules.",
+    "template_id": "system_overview",
+    "source_spans": [
+      {
+        "section": "system",
+        "start": 0,
+        "end": 518,
+        "quote": "# Sample Paper\n\n## 1 Methodology\nWe propose a three-stage pipeline: preprocess data, encode observations, and decode outputs.\nThe method uses attention and residual links.\n\n## 2 System Architecture\nThe system has four modules: parser, planner, generator, and critic.\nData flows from parser to planner"
+      }
+    ]
+  },
+  {
+    "figure_id": "fig-5d45c2ac",
+    "title": "Results Summary Plot",
+    "kind": "results_plot",
+    "order": 3,
+    "abstraction_level": "medium",
+    "description": "Template-driven figure using results_summary_plot.",
+    "justification": "Selected by template 'results_summary_plot' based on required sections and trigger rules.",
+    "template_id": "results_summary_plot",
+    "source_spans": [
+      {
+        "section": "results",
+        "start": 0,
+        "end": 518,
+        "quote": "# Sample Paper\n\n## 1 Methodology\nWe propose a three-stage pipeline: preprocess data, encode observations, and decode outputs.\nThe method uses attention and residual links.\n\n## 2 System Architecture\nThe system has four modules: parser, planner, generator, and critic.\nData flows from parser to planner"
+      }
+    ]
+  },
+  {
+    "figure_id": "fig-4f509219",
+    "title": "Ablation Matrix",
+    "kind": "ablation",
+    "order": 4,
+    "abstraction_level": "medium",
+    "description": "Template-driven figure using ablation_matrix.",
+    "justification": "Selected by template 'ablation_matrix' based on required sections and trigger rules.",
+    "template_id": "ablation_matrix",
+    "source_spans": [
+      {
+        "section": "results",
+        "start": 0,
+        "end": 518,
+        "quote": "# Sample Paper\n\n## 1 Methodology\nWe propose a three-stage pipeline: preprocess data, encode observations, and decode outputs.\nThe method uses attention and residual links.\n\n## 2 System Architecture\nThe system has four modules: parser, planner, generator, and critic.\nData flows from parser to planner"
+      }
+    ]
+  },
+  {
+    "figure_id": "fig-a4b1a96c",
+    "title": "Dataset Characteristics",
+    "kind": "dataset_overview",
+    "order": 5,
+    "abstraction_level": "medium",
+    "description": "Template-driven figure using dataset_characteristics.",
+    "justification": "Selected by template 'dataset_characteristics' based on required sections and trigger rules.",
+    "template_id": "dataset_characteristics",
+    "source_spans": [
+      {
+        "section": "methodology",
+        "start": 0,
+        "end": 518,
+        "quote": "# Sample Paper\n\n## 1 Methodology\nWe propose a three-stage pipeline: preprocess data, encode observations, and decode outputs.\nThe method uses attention and residual links.\n\n## 2 System Architecture\nThe system has four modules: parser, planner, generator, and critic.\nData flows from parser to planner"
+      }
+    ]
+  }
+]

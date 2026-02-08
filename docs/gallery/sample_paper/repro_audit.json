@@ -1,0 +1,147 @@
+{
+  "run_id": "run-20260208-135736-6c5245",
+  "mode": "soft",
+  "checks": [
+    {
+      "check_id": "run_json_present",
+      "description": "Run metadata file exists",
+      "required": true,
+      "passed": true,
+      "severity": "critical",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/run.json"
+      }
+    },
+    {
+      "check_id": "artifact_plan.json",
+      "description": "Artifact exists: plan.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/plan.json"
+      }
+    },
+    {
+      "check_id": "artifact_sections.json",
+      "description": "Artifact exists: sections.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/sections.json"
+      }
+    },
+    {
+      "check_id": "artifact_traceability.json",
+      "description": "Artifact exists: traceability.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/traceability.json"
+      }
+    },
+    {
+      "check_id": "artifact_inspect.json",
+      "description": "Artifact exists: inspect.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/inspect.json"
+      }
+    },
+    {
+      "check_id": "artifact_docs_drift_report.json",
+      "description": "Artifact exists: docs_drift_report.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/docs_drift_report.json"
+      }
+    },
+    {
+      "check_id": "artifact_architecture_critique.json",
+      "description": "Artifact exists: architecture_critique.json",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/architecture_critique.json"
+      }
+    },
+    {
+      "check_id": "artifact_prompts_plan_figure.txt",
+      "description": "Artifact exists: prompts/plan_figure.txt",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/prompts/plan_figure.txt"
+      }
+    },
+    {
+      "check_id": "artifact_prompts_critique_figure.txt",
+      "description": "Artifact exists: prompts/critique_figure.txt",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "present",
+      "details": {
+        "path": "runs/run-20260208-135736-6c5245/prompts/critique_figure.txt"
+      }
+    },
+    {
+      "check_id": "provenance_metadata",
+      "description": "Run metadata captures provenance fields",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "ok",
+      "details": {
+        "required_fields": [
+          "paper_path",
+          "created_at"
+        ]
+      }
+    },
+    {
+      "check_id": "deterministic_seed_declared",
+      "description": "Run metadata declares a deterministic seed",
+      "required": false,
+      "passed": true,
+      "severity": "minor",
+      "message": "seed_present",
+      "details": {}
+    },
+    {
+      "check_id": "config_hash_match",
+      "description": "Run metadata config hash matches expected hash",
+      "required": true,
+      "passed": true,
+      "severity": "major",
+      "message": "match",
+      "details": {
+        "expected": "bbcb5ba8b6654f1c095fc2212b10830e585d7213f66f309689011a5a93ed2e12",
+        "actual": "bbcb5ba8b6654f1c095fc2212b10830e585d7213f66f309689011a5a93ed2e12"
+      }
+    }
+  ],
+  "passed": true,
+  "summary": "Reproducibility checks passed.",
+  "generated_at": "2026-02-08T19:57:37Z",
+  "environment": {
+    "python_version": "3.12.3 (main, Jan 22 2026, 20:57:42) [GCC 13.3.0]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39"
+  }
+}

@@ -10,11 +10,20 @@ readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "paperfig contributors" }]
 license = { text = "MIT" }
-dependencies = [
-  "typer>=0.9.0",
-]
+dependencies = []
 
 [project.optional-dependencies]
+cli = [
+  "typer>=0.9.0",
+  "rich>=13.7.0",
+]
+png = ["cairosvg>=2.7.0"]
+dev = [
+  "pytest>=8.0.0",
+  "coverage[toml]>=7.0.0",
+  "ruff>=0.6.0",
+  "mypy>=1.8.0",
+]
 pdf = ["pdfminer.six>=20221105", "pypdf>=3.0.0"]
 svg = ["cairosvg>=2.7.0"]
 mcp = ["mcp>=1.0.0"]
