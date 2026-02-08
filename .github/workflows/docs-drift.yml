@@ -24,7 +24,7 @@ jobs:
           pip install -e .
 
       - name: Run docs drift script
-        run: ./scripts/check_docs_drift.sh
+        run: bash ./scripts/check_docs_drift.sh
 
       - name: Upload run reports (best effort)
         if: always()

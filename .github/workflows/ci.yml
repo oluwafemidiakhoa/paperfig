@@ -24,10 +24,10 @@ jobs:
           pip install -e .
 
       - name: Run quality gate script
-        run: ./scripts/check_quality.sh
+        run: bash ./scripts/check_quality.sh
 
       - name: Run unit test script
-        run: ./scripts/run_unit_tests.sh
+        run: bash ./scripts/run_unit_tests.sh
 
       - name: Upload run reports (best effort)
         if: always()

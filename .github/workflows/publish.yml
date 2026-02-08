@@ -26,10 +26,10 @@ jobs:
           pip install -e .
 
       - name: Run quality gate
-        run: ./scripts/check_quality.sh
+        run: bash ./scripts/check_quality.sh
 
       - name: Build distribution artifacts
-        run: ./scripts/build_dist.sh
+        run: bash ./scripts/build_dist.sh
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
