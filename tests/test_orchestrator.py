@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from paperfig.pipeline.orchestrator import Orchestrator
+from paperfig.journals.loader import load_journal_profile
 from paperfig.utils.types import CritiqueReport, FigureCandidate, FigurePlan
 
 
@@ -197,6 +198,11 @@ Performance rises from 0.80 to 0.87.
             self.assertTrue((run_dir / "docs_drift_report.json").exists())
             self.assertTrue((run_dir / "architecture_critique.json").exists())
             self.assertTrue((run_dir / "repro_audit.json").exists())
+            contracts = list((run_dir / "figures").glob("*/contract.json"))
+            self.assertGreaterEqual(len(contracts), 1)
+            contract_payload = json.loads(contracts[0].read_text(encoding="utf-8"))
+            self.assertIn("contract_id", contract_payload)
+            self.assertIn("figure_id", contract_payload)
 
             plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(plan), 1)
@@ -244,6 +250,7 @@ Result details.
             report = json.loads((out / "export_report.json").read_text(encoding="utf-8"))
             self.assertEqual(report["warnings"], [])
             self.assertGreaterEqual(len(report["figures"]), 1)
+            self.assertIn("contract_valid", report["figures"][0])
 
             png_files = list(out.glob("*.png"))
             self.assertGreaterEqual(len(png_files), 1)
@@ -469,6 +476,141 @@ Result details.
             self.assertIn("metrics", diff_report)
             self.assertIn("changed_figures", diff_report)
             self.assertIn("changed_artifacts", diff_report)
+
+    def test_inspect_html_writes_manifest(self) -> None:
+        content = """
+# Title
+
+## Methodology
+Method details.
+
+## System
+System details.
+
+## Results
+Result details.
+""".strip()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            paper = tmp / "paper.md"
+            runs = tmp / "runs"
+            paper.write_text(content, encoding="utf-8")
+
+            old_mock = os.environ.get("PAPERFIG_MOCK_PAPERBANANA")
+            os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+            try:
+                orchestrator = Orchestrator(run_root=runs)
+                run_id = orchestrator.generate(paper)
+            finally:
+                if old_mock is None:
+                    os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+                else:
+                    os.environ["PAPERFIG_MOCK_PAPERBANANA"] = old_mock
+
+            html_path = orchestrator.inspect_html(run_id)
+            self.assertTrue(html_path.exists())
+            self.assertTrue((runs / run_id / "inspect" / "manifest.json").exists())
+            self.assertIn("paperfig inspector", html_path.read_text(encoding="utf-8"))
+
+    def test_regress_report_is_created(self) -> None:
+        content_v1 = """
+# Title
+
+## Methodology
+Method details.
+
+## System
+System details.
+
+## Results
+Result details.
+""".strip()
+        content_v2 = content_v1 + "\n\n## Results\nAdditional experiment results."
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            paper_v1 = tmp / "paper_v1.md"
+            paper_v2 = tmp / "paper_v2.md"
+            runs = tmp / "runs"
+            paper_v1.write_text(content_v1, encoding="utf-8")
+            paper_v2.write_text(content_v2, encoding="utf-8")
+
+            old_mock = os.environ.get("PAPERFIG_MOCK_PAPERBANANA")
+            os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+            try:
+                orchestrator = Orchestrator(run_root=runs)
+                report = orchestrator.regress(paper_v1, paper_v2)
+            finally:
+                if old_mock is None:
+                    os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+                else:
+                    os.environ["PAPERFIG_MOCK_PAPERBANANA"] = old_mock
+
+            report_dir = Path(report["report_dir"])
+            self.assertTrue((report_dir / "regression_report.json").exists())
+            self.assertIn("metrics", report)
+            self.assertIn("invariants", report)
+
+    def test_journal_profile_enforces_required_kinds(self) -> None:
+        profile = load_journal_profile("neurips")
+        content_full = """
+# Title
+
+## Methodology
+Method details.
+
+## System
+System details.
+
+## Results
+Result details.
+""".strip()
+        content_missing = """
+# Title
+
+## Methodology
+Only methodology here.
+""".strip()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            paper_full = tmp / "paper_full.md"
+            runs = tmp / "runs"
+            paper_full.write_text(content_full, encoding="utf-8")
+
+            old_mock = os.environ.get("PAPERFIG_MOCK_PAPERBANANA")
+            os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+            try:
+                orchestrator = Orchestrator(run_root=runs, journal_profile=profile)
+                run_id = orchestrator.generate(paper_full)
+            finally:
+                if old_mock is None:
+                    os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+                else:
+                    os.environ["PAPERFIG_MOCK_PAPERBANANA"] = old_mock
+
+            self.assertTrue((runs / run_id / "journal_profile.json").exists())
+            run_meta = json.loads((runs / run_id / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual(run_meta.get("journal_profile"), profile.profile_id)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            paper_missing = tmp / "paper_missing.md"
+            runs = tmp / "runs"
+            paper_missing.write_text(content_missing, encoding="utf-8")
+
+            old_mock = os.environ.get("PAPERFIG_MOCK_PAPERBANANA")
+            os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+            try:
+                orchestrator = Orchestrator(run_root=runs, journal_profile=profile)
+                with self.assertRaises(RuntimeError):
+                    orchestrator.generate(paper_missing)
+            finally:
+                if old_mock is None:
+                    os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+                else:
+                    os.environ["PAPERFIG_MOCK_PAPERBANANA"] = old_mock
 
     def test_generate_contrib_writes_notes_and_logs(self) -> None:
         content = """

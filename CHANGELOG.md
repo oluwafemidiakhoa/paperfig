@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.4.0] - 2026-02-10
+- Added figure contracts (`contract.json`) with schema validation during critique and export.
+- Added a self-contained HTML inspector via `paperfig inspect --html` with run-level manifests.
+- Introduced a plugin registry for critique rules and reproducibility checks plus CLI utilities.
+- Added paper regression detection with `paperfig regress` and persisted `regression_report.json`.
+- Added journal mode (`--mode journal:neurips`) with stricter gates and required figure kinds.
+
 ## [0.3.0] - 2026-02-09
 - Added a contributor flow-template framework with JSON Schema validation and `paperfig templates lint`.
 - Added template-pack discovery from directory paths or Python package resources, including `paperfig templates list --pack`.

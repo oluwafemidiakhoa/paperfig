@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperfigg"
-version = "0.3.0"
+version = "0.4.0"
 description = "Agentic CLI for generating academic figures from research papers"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,4 +40,15 @@ where = ["."]
 include = ["paperfig*"]
 
 [tool.setuptools.package-data]
-paperfig = ["prompts/*.txt", "styles/*.json", "templates/flows/*.yaml", "templates/schema/*.json"]
+paperfig = [
+  "prompts/*.txt",
+  "styles/*.json",
+  "templates/flows/*.yaml",
+  "templates/schema/*.json",
+  "contracts/schema/*.json",
+  "inspectors/schema/*.json",
+  "plugins/schema/*.json",
+  "regression/schema/*.json",
+  "journals/schema/*.json",
+  "journals/profiles/*.json",
+]

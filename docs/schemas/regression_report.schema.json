@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RegressionReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_id",
+    "paper_v1",
+    "paper_v2",
+    "run_id_v1",
+    "run_id_v2",
+    "generated_at",
+    "metrics",
+    "invariants",
+    "summary",
+    "report_dir"
+  ],
+  "properties": {
+    "report_id": {"type": "string"},
+    "paper_v1": {"type": "string"},
+    "paper_v2": {"type": "string"},
+    "run_id_v1": {"type": "string"},
+    "run_id_v2": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "metrics": {"type": "object"},
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "passed"],
+        "properties": {
+          "id": {"type": "string"},
+          "description": {"type": "string"},
+          "passed": {"type": "boolean"},
+          "details": {"type": "object"}
+        }
+      }
+    },
+    "summary": {"type": "string"},
+    "diff_report": {"type": "string"},
+    "report_dir": {"type": "string"}
+  }
+}

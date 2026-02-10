@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JournalProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "quality_threshold",
+    "dimension_threshold",
+    "max_iterations",
+    "required_kinds",
+    "arch_critique_block_severity",
+    "repro_audit_mode",
+    "template_pack"
+  ],
+  "properties": {
+    "id": {"type": "string"},
+    "name": {"type": "string"},
+    "version": {"type": "string"},
+    "quality_threshold": {"type": "number"},
+    "dimension_threshold": {"type": "number"},
+    "max_iterations": {"type": "integer"},
+    "required_kinds": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "arch_critique_block_severity": {
+      "type": "string",
+      "enum": ["info", "minor", "major", "critical"]
+    },
+    "repro_audit_mode": {
+      "type": "string",
+      "enum": ["soft", "hard"]
+    },
+    "template_pack": {"type": "string"},
+    "notes": {"type": "string"}
+  }
+}

@@ -14,6 +14,7 @@
       "mode": "validated",
       "required_sections": [
         "# Changelog",
+        "## [0.4.0] - 2026-02-10",
         "## [0.3.0] - 2026-02-09",
         "## [0.2.0] - 2026-02-08"
       ]
@@ -140,6 +141,81 @@
         "# Windows PNG Export",
         "## Option 1: MSYS2 UCRT64",
         "## Option 2: Conda-Forge Environment"
+      ]
+    },
+    {
+      "path": "docs/schemas/figure_contract.schema.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/schemas/plugin_descriptor.schema.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/schemas/regression_report.schema.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/schemas/journal_profile.schema.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/schemas/inspect_html.schema.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/journals/neurips.json",
+      "mode": "validated",
+      "required_sections": []
+    },
+    {
+      "path": "docs/features/FIGURE_CONTRACTS.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Figure Contracts",
+        "## Overview",
+        "## Validation"
+      ]
+    },
+    {
+      "path": "docs/features/HTML_INSPECTOR.md",
+      "mode": "validated",
+      "required_sections": [
+        "# HTML Inspector",
+        "## Usage",
+        "## Artifacts"
+      ]
+    },
+    {
+      "path": "docs/features/PLUGINS.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Plugin Registry",
+        "## Plugin Types",
+        "## CLI"
+      ]
+    },
+    {
+      "path": "docs/features/REGRESSION.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Paper Regression Detection",
+        "## Usage",
+        "## Report"
+      ]
+    },
+    {
+      "path": "docs/features/JOURNAL_MODE.md",
+      "mode": "validated",
+      "required_sections": [
+        "# Journal Mode",
+        "## Usage",
+        "## Profiles"
       ]
     }
   ],

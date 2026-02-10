@@ -33,6 +33,8 @@ def is_command_allowed(command: str, policy: LabPolicy) -> Tuple[bool, str]:
 
     prefix = tokens[0]
     if policy.allowed_prefixes and prefix not in policy.allowed_prefixes:
+        if prefix == "python" and "python3" in policy.allowed_prefixes:
+            return True, "allowed (python alias for python3)"
         return False, f"Command prefix '{prefix}' is not allowed"
 
     return True, "allowed"

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set
 
-from paperfig.critique.rules import list_rule_descriptors, resolve_enabled_rules
+from paperfig.plugins.registry import resolve_enabled_critique_plugins
 from paperfig.critique.rules.base import RuleContext
 from paperfig.templates.loader import load_template_catalog
 from paperfig.utils.prompts import load_prompt
@@ -34,7 +34,14 @@ class ArchitectureCriticAgent:
         self.default_template_pack = default_template_pack
 
     def available_rules(self) -> List[dict]:
-        return list_rule_descriptors()
+        rules = resolve_enabled_critique_plugins(None)
+        return [
+            {
+                "rule_id": plugin.descriptor.plugin_id.split(".", 1)[-1],
+                "description": plugin.descriptor.description,
+            }
+            for plugin in rules
+        ]
 
     def critique(
         self,
@@ -61,8 +68,8 @@ class ArchitectureCriticAgent:
         )
 
         findings = []
-        for rule in resolve_enabled_rules(enabled_rules):
-            findings.extend(rule.evaluator(context))
+        for plugin in resolve_enabled_critique_plugins(enabled_rules):
+            findings.extend(plugin.evaluator(context))
 
         max_seen = max((SEVERITY_ORDER.get(item.severity, 0) for item in findings), default=0)
         blocked = max_seen >= SEVERITY_ORDER.get(block_severity, SEVERITY_ORDER["critical"])
@@ -114,4 +121,3 @@ class ArchitectureCriticAgent:
 
 def report_to_dict(report: ArchitectureCritiqueReport) -> Dict[str, object]:
     return asdict(report)
-

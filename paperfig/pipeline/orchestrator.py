@@ -15,14 +15,19 @@ from paperfig.agents.generator import GeneratorAgent
 from paperfig.agents.planner import PlannerAgent
 from paperfig.audits.reproducibility import report_to_dict as repro_report_to_dict
 from paperfig.audits.reproducibility import run_reproducibility_audit
+from paperfig.contracts import build_figure_contract, load_contract, validate_contract_data, write_contract
 from paperfig.docsgen import run_docs_regeneration
 from paperfig.exporters.latex import export_latex
 from paperfig.exporters.png import export_png
 from paperfig.exporters.svg import export_svg
+from paperfig.inspectors import build_html_inspector
+from paperfig.journals import journal_profile_to_dict, load_journal_profile
+from paperfig.plugins.registry import list_plugins
+from paperfig.templates.loader import load_template_catalog
 from paperfig.utils.config import config_hash, load_config
 from paperfig.utils.pdf_parser import parse_paper
 from paperfig.utils.style_refs import load_style_refs
-from paperfig.utils.types import CritiqueReport, FigurePlan, PaperContent
+from paperfig.utils.types import CritiqueReport, FigurePlan, JournalProfile, PaperContent
 
 
 class Orchestrator:
@@ -37,6 +42,7 @@ class Orchestrator:
         arch_critique_block_severity: Optional[str] = None,
         repro_audit_mode: Optional[str] = None,
         config_path: Path = Path("paperfig.yaml"),
+        journal_profile: Optional[JournalProfile] = None,
     ) -> None:
         self.run_root = run_root
         self.max_iterations = max_iterations
@@ -68,11 +74,21 @@ class Orchestrator:
         self.docs_manifest_path = Path(str(docs_cfg.get("manifest_path", "docs/docs_manifest.yaml")))
         self.docs_auto_regen_on_generate = bool(docs_cfg.get("auto_regen_on_generate", True))
 
+        self.journal_profile = journal_profile
+        if self.journal_profile:
+            self.max_iterations = self.journal_profile.max_iterations
+            self.quality_threshold = self.journal_profile.quality_threshold
+            self.dimension_threshold = self.journal_profile.dimension_threshold
+            self.arch_critique_block_severity = self.journal_profile.arch_critique_block_severity
+            self.repro_audit_mode = self.journal_profile.repro_audit_mode
+            if self.journal_profile.template_pack:
+                self.template_pack = self.journal_profile.template_pack
+
         self.planner = PlannerAgent(template_dir=self.template_dir, template_pack=self.template_pack)
         self.generator = GeneratorAgent()
         self.critic = CriticAgent(
-            threshold=quality_threshold,
-            dimension_threshold=dimension_threshold,
+            threshold=self.quality_threshold,
+            dimension_threshold=self.dimension_threshold,
         )
         self.architecture_critic = ArchitectureCriticAgent(
             repo_root=Path("."),
@@ -89,6 +105,8 @@ class Orchestrator:
     ) -> str:
         paper = parse_paper(paper_path)
         plan = list(_plan_override) if _plan_override is not None else self.planner.plan(paper)
+        if self.journal_profile:
+            self._enforce_journal_requirements(plan)
         return self._execute_generation(
             paper_path=paper_path,
             paper=paper,
@@ -116,6 +134,14 @@ class Orchestrator:
         if not plan:
             raise RuntimeError(f"Run {source_run_id} has an empty plan.json; cannot rerun deterministically.")
 
+        journal_profile = None
+        profile_id = source_run_meta.get("journal_profile")
+        if profile_id:
+            try:
+                journal_profile = load_journal_profile(str(profile_id))
+            except Exception:
+                journal_profile = None
+
         replay = Orchestrator(
             run_root=self.run_root,
             max_iterations=int(source_run_meta.get("max_iterations", self.max_iterations)),
@@ -128,6 +154,7 @@ class Orchestrator:
             ),
             repro_audit_mode=str(source_run_meta.get("repro_audit_mode", self.repro_audit_mode)),
             config_path=self.config_path,
+            journal_profile=journal_profile,
         )
         return replay.generate(
             paper_path=paper_path,
@@ -196,6 +223,86 @@ class Orchestrator:
         self._write_json(diff_dir / "diff.json", report)
         return report
 
+    def regress(self, paper_v1: Path, paper_v2: Path, output_dir: Optional[Path] = None) -> Dict[str, Any]:
+        run_id_v1 = self.generate(paper_v1)
+        run_id_v2 = self.generate(paper_v2)
+
+        inspect_1 = self._load_or_build_inspect(run_id_v1)
+        inspect_2 = self._load_or_build_inspect(run_id_v2)
+        aggregate_1 = inspect_1.get("aggregate", {})
+        aggregate_2 = inspect_2.get("aggregate", {})
+
+        metrics = {
+            "accepted_count": {
+                "run_1": aggregate_1.get("accepted_count"),
+                "run_2": aggregate_2.get("accepted_count"),
+                "delta": self._delta(aggregate_1.get("accepted_count"), aggregate_2.get("accepted_count")),
+            },
+            "avg_final_score": {
+                "run_1": aggregate_1.get("avg_final_score"),
+                "run_2": aggregate_2.get("avg_final_score"),
+                "delta": self._delta(aggregate_1.get("avg_final_score"), aggregate_2.get("avg_final_score")),
+            },
+            "avg_traceability_coverage": {
+                "run_1": aggregate_1.get("avg_traceability_coverage"),
+                "run_2": aggregate_2.get("avg_traceability_coverage"),
+                "delta": self._delta(
+                    aggregate_1.get("avg_traceability_coverage"),
+                    aggregate_2.get("avg_traceability_coverage"),
+                ),
+            },
+        }
+
+        invariants = [
+            {
+                "id": "accepted_not_decrease",
+                "description": "Accepted figure count should not decrease.",
+                "passed": metrics["accepted_count"]["delta"] is None or metrics["accepted_count"]["delta"] >= 0,
+                "details": metrics["accepted_count"],
+            },
+            {
+                "id": "avg_score_not_drop",
+                "description": "Average final score should not drop by more than 0.05.",
+                "passed": metrics["avg_final_score"]["delta"] is None or metrics["avg_final_score"]["delta"] >= -0.05,
+                "details": metrics["avg_final_score"],
+            },
+            {
+                "id": "traceability_not_drop",
+                "description": "Average traceability coverage should not drop by more than 0.05.",
+                "passed": metrics["avg_traceability_coverage"]["delta"] is None
+                or metrics["avg_traceability_coverage"]["delta"] >= -0.05,
+                "details": metrics["avg_traceability_coverage"],
+            },
+        ]
+
+        diff_report = self.diff(run_id_v1, run_id_v2)
+        stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+        regress_id = f"regress-{stamp}-{uuid.uuid4().hex[:6]}"
+        report_dir = output_dir or (self.run_root / regress_id)
+        report_dir.mkdir(parents=True, exist_ok=True)
+
+        summary = "Regression checks passed."
+        failed = [item for item in invariants if not item.get("passed")]
+        if failed:
+            summary = f"{len(failed)} regression invariant(s) failed."
+
+        report = {
+            "report_id": regress_id,
+            "paper_v1": str(paper_v1),
+            "paper_v2": str(paper_v2),
+            "run_id_v1": run_id_v1,
+            "run_id_v2": run_id_v2,
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "metrics": metrics,
+            "invariants": invariants,
+            "summary": summary,
+            "diff_report": diff_report.get("diff_dir"),
+            "report_dir": str(report_dir),
+        }
+
+        self._write_json(report_dir / "regression_report.json", report)
+        return report
+
     def _execute_generation(
         self,
         paper_path: Path,
@@ -210,6 +317,8 @@ class Orchestrator:
         figures_dir = run_dir / "figures"
         exports_dir = run_dir / "exports"
         contrib_log_path = run_dir / "contrib.log"
+        template_map = self._load_template_map()
+        contract_errors: Dict[str, List[str]] = {}
 
         figures_dir.mkdir(parents=True, exist_ok=True)
         exports_dir.mkdir(parents=True, exist_ok=True)
@@ -217,6 +326,8 @@ class Orchestrator:
             self._append_contrib_log(contrib_log_path, f"start run_id={run_id} paper={paper_path}")
 
         self._write_run_metadata(run_dir, paper_path, extra=metadata_overrides)
+        self._write_plugins_snapshot(run_dir)
+        self._write_journal_profile(run_dir)
         self._write_sections(run_dir, paper)
         self._write_plan(run_dir, list(plan))
         self._write_prompts(run_dir)
@@ -231,6 +342,16 @@ class Orchestrator:
         for figure_plan in plan:
             figure_dir = figures_dir / figure_plan.figure_id
             figure_dir.mkdir(parents=True, exist_ok=True)
+            template = template_map.get(figure_plan.template_id)
+            contract = build_figure_contract(run_id, figure_plan, template)
+            write_contract(figure_dir / "contract.json", contract)
+            errors = validate_contract_data(asdict(contract))
+            contract_errors[figure_plan.figure_id] = errors
+            if contrib and errors:
+                self._append_contrib_log(
+                    contrib_log_path,
+                    f"contract errors figure={figure_plan.figure_id} issues={len(errors)}",
+                )
             accepted = False
             last_report: CritiqueReport | None = None
             critique_feedback: dict | None = None
@@ -251,6 +372,9 @@ class Orchestrator:
                     critique_feedback=critique_feedback,
                 )
                 report = self.critic.critique(Path(candidate.svg_path), figure_plan, paper)
+                errors = contract_errors.get(figure_plan.figure_id, [])
+                if errors:
+                    self._apply_contract_validation(report, errors)
                 last_report = report
                 critique_feedback = {
                     "previous_score": report.score,
@@ -276,6 +400,9 @@ class Orchestrator:
                     shutil.copy2(candidate.svg_path, final_dir / "figure.svg")
                     shutil.copy2(candidate.element_metadata_path, final_dir / "element_metadata.json")
                     shutil.copy2(candidate.traceability_path, final_dir / "traceability.json")
+                    contract_path = figure_dir / "contract.json"
+                    if contract_path.exists():
+                        shutil.copy2(contract_path, final_dir / "contract.json")
                     accepted = True
                     if contrib:
                         self._append_contrib_log(
@@ -292,6 +419,9 @@ class Orchestrator:
                 shutil.copy2(last_iter_dir / "figure.svg", final_dir / "figure.svg")
                 shutil.copy2(last_iter_dir / "element_metadata.json", final_dir / "element_metadata.json")
                 shutil.copy2(last_iter_dir / "traceability.json", final_dir / "traceability.json")
+                contract_path = figure_dir / "contract.json"
+                if contract_path.exists():
+                    shutil.copy2(contract_path, final_dir / "contract.json")
                 if contrib:
                     self._append_contrib_log(
                         contrib_log_path,
@@ -479,6 +609,24 @@ class Orchestrator:
                 traceability_src = final_dir / "traceability.json"
                 if traceability_src.exists():
                     shutil.copy2(traceability_src, output_dir / f"{figure_id}.traceability.json")
+
+                contract_src = figure_dir / "contract.json"
+                contract_payload = load_contract(contract_src) if contract_src.exists() else None
+                contract_errors: List[str] = []
+                if isinstance(contract_payload, dict):
+                    contract_errors = validate_contract_data(contract_payload)
+                else:
+                    contract_errors = ["contract.json: missing or invalid"]
+
+                figure_report["contract"] = str(contract_src) if contract_src.exists() else None
+                figure_report["contract_valid"] = not contract_errors
+                figure_report["contract_errors"] = contract_errors
+                if contract_src.exists():
+                    shutil.copy2(contract_src, output_dir / f"{figure_id}.contract.json")
+                if contract_errors:
+                    export_report["warnings"].append(
+                        f"Contract validation failed for {figure_id}: {', '.join(contract_errors)}"
+                    )
                 export_report["figures"].append(figure_report)
 
         captions_src = run_dir / "captions.txt"
@@ -658,6 +806,14 @@ class Orchestrator:
 
         return summary
 
+    def inspect_html(self, run_id: str) -> Path:
+        run_dir = self.run_root / run_id
+        if not run_dir.exists():
+            raise FileNotFoundError(f"Run {run_id} not found in {self.run_root}")
+        self._load_or_build_inspect(run_id)
+        manifest = build_html_inspector(run_dir, self.run_root)
+        return Path(manifest.html_path)
+
     def _write_run_metadata(self, run_dir: Path, paper_path: Path, extra: Optional[Dict[str, Any]] = None) -> None:
         metadata = {
             "run_id": run_dir.name,
@@ -671,6 +827,7 @@ class Orchestrator:
             "arch_critique_block_severity": self.arch_critique_block_severity,
             "repro_audit_mode": self.repro_audit_mode,
             "config_hash": self.config_fingerprint,
+            "journal_profile": self.journal_profile.profile_id if self.journal_profile else None,
             "seed": None,
         }
         if extra:
@@ -777,6 +934,46 @@ class Orchestrator:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(f"[{timestamp}] {message}\n")
+
+    def _apply_contract_validation(self, report: CritiqueReport, errors: List[str]) -> None:
+        if not errors:
+            return
+        report.issues.extend([f"Contract validation failed: {error}" for error in errors])
+        if "contract" not in report.failed_dimensions:
+            report.failed_dimensions.append("contract")
+        report.passed = False
+        report.recommendations.append("Fix figure contract schema violations before rerunning critique.")
+
+    def _load_template_map(self) -> Dict[str, object]:
+        try:
+            catalog = load_template_catalog(
+                template_dir=self.template_dir,
+                pack_id=self.template_pack,
+                pack=self.template_pack,
+            )
+        except Exception:
+            return {}
+        return {template.template_id: template for template in catalog.templates}
+
+    def _write_plugins_snapshot(self, run_dir: Path) -> None:
+        descriptors = [asdict(plugin) for plugin in list_plugins()]
+        self._write_json(run_dir / "plugins.json", descriptors)
+
+    def _write_journal_profile(self, run_dir: Path) -> None:
+        if not self.journal_profile:
+            return
+        self._write_json(run_dir / "journal_profile.json", journal_profile_to_dict(self.journal_profile))
+
+    def _enforce_journal_requirements(self, plan: Sequence[FigurePlan]) -> None:
+        if not self.journal_profile:
+            return
+        required = {item for item in self.journal_profile.required_kinds if item}
+        present = {item.kind for item in plan}
+        missing = sorted(required - present)
+        if missing:
+            raise RuntimeError(
+                f"Journal profile '{self.journal_profile.profile_id}' requires figures: {', '.join(missing)}"
+            )
 
     def _new_run_id(self) -> str:
         return f"run-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"

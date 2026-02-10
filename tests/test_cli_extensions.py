@@ -67,6 +67,17 @@ class CliExtensionsTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.stdout)
         self.assertIn("paperfig doctor --fix png", result.stdout)
 
+    def test_plugins_list(self) -> None:
+        result = self.runner.invoke(app, ["plugins", "list"])
+        self.assertEqual(result.exit_code, 0, msg=result.stdout)
+        self.assertIn("critique_rule", result.stdout)
+        self.assertIn("repro_check", result.stdout)
+
+    def test_plugins_validate(self) -> None:
+        result = self.runner.invoke(app, ["plugins", "validate"])
+        self.assertEqual(result.exit_code, 0, msg=result.stdout)
+        self.assertIn("Plugin registry is valid", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

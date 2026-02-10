@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 @dataclass
@@ -120,3 +120,72 @@ class FlowTemplate:
 class FlowTemplateCatalog:
     pack_id: str
     templates: List[FlowTemplate] = field(default_factory=list)
+
+
+@dataclass
+class FigureContract:
+    contract_id: str
+    schema_version: str
+    run_id: str
+    figure_id: str
+    title: str
+    kind: str
+    template_id: str
+    order: int
+    abstraction_level: str
+    required_sections: List[str] = field(default_factory=list)
+    source_spans: List[Dict[str, Any]] = field(default_factory=list)
+    traceability_requirements: Dict[str, Any] = field(default_factory=dict)
+    invariants: List[str] = field(default_factory=list)
+    created_at: str = ""
+
+
+@dataclass
+class InspectHtmlManifest:
+    run_id: str
+    generated_at: str
+    html_path: str
+    artifacts: List[str] = field(default_factory=list)
+    summary: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class PluginDescriptor:
+    plugin_id: str
+    kind: str
+    name: str
+    description: str
+    version: str
+    entrypoint: str
+    enabled_by_default: bool = True
+    tags: List[str] = field(default_factory=list)
+
+
+@dataclass
+class RegressionReport:
+    report_id: str
+    paper_v1: str
+    paper_v2: str
+    run_id_v1: str
+    run_id_v2: str
+    generated_at: str
+    metrics: Dict[str, Any] = field(default_factory=dict)
+    invariants: List[Dict[str, Any]] = field(default_factory=list)
+    summary: str = ""
+    diff_report: Optional[str] = None
+    report_dir: str = ""
+
+
+@dataclass
+class JournalProfile:
+    profile_id: str
+    name: str
+    version: str
+    quality_threshold: float
+    dimension_threshold: float
+    max_iterations: int
+    required_kinds: List[str] = field(default_factory=list)
+    arch_critique_block_severity: str = "critical"
+    repro_audit_mode: str = "soft"
+    template_pack: str = "expanded_v1"
+    notes: str = ""

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PluginDescriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["plugin_id", "kind", "name", "description", "version", "entrypoint"],
+  "properties": {
+    "plugin_id": {"type": "string"},
+    "kind": {
+      "type": "string",
+      "enum": ["critique_rule", "repro_check"]
+    },
+    "name": {"type": "string"},
+    "description": {"type": "string"},
+    "version": {"type": "string"},
+    "entrypoint": {"type": "string"},
+    "enabled_by_default": {"type": "boolean"},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

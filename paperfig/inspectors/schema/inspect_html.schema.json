@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InspectHtmlManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "generated_at", "html_path", "artifacts"],
+  "properties": {
+    "run_id": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "html_path": {"type": "string"},
+    "artifacts": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "summary": {"type": "object"}
+  }
+}

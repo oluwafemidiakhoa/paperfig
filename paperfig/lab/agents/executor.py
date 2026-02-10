@@ -3,6 +3,8 @@ from __future__ import annotations
 import shlex
 import subprocess
 import time
+import sys
+from shutil import which
 from typing import Tuple
 
 from paperfig.lab.policy import is_command_allowed
@@ -14,7 +16,8 @@ class LabExecutionError(RuntimeError):
 
 
 def execute_command(command: str, policy: LabPolicy) -> LabExperimentResult:
-    allowed, reason = is_command_allowed(command, policy)
+    normalized_command = _normalize_command(command)
+    allowed, reason = is_command_allowed(normalized_command, policy)
     started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     if not allowed:
@@ -31,7 +34,7 @@ def execute_command(command: str, policy: LabPolicy) -> LabExperimentResult:
 
     try:
         completed = subprocess.run(  # noqa: S603
-            shlex.split(command),
+            _command_tokens_for_exec(normalized_command),
             capture_output=True,
             text=True,
             timeout=policy.max_runtime_seconds,
@@ -60,3 +63,22 @@ def execute_command(command: str, policy: LabPolicy) -> LabExperimentResult:
         stderr=completed.stderr[:10000],
         policy_violation="",
     )
+
+
+def _normalize_command(command: str) -> str:
+    tokens = shlex.split(command)
+    if not tokens:
+        return command
+    if tokens[0] == "python3" and which("python3") is None and which("python") is not None:
+        tokens[0] = "python"
+        return " ".join(shlex.quote(token) for token in tokens)
+    return command
+
+
+def _command_tokens_for_exec(command: str) -> list[str]:
+    tokens = shlex.split(command)
+    if not tokens:
+        return tokens
+    if tokens[0] in {"python", "python3"}:
+        tokens[0] = sys.executable
+    return tokens

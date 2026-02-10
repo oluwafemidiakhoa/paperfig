@@ -49,25 +49,25 @@ paperfig doctor --probe-mcp
 paperfig generate examples/sample_paper.md --mode real
 ```
 
-## What's New In v0.3.0
-- Contributor flywheel:
-  - `paperfig templates lint` validates flow templates against JSON Schema.
-  - Domain-pack loading supports directory or Python package packs via `--pack` and `--template-pack`.
-  - Architecture critique supports rule plugins with `--list-rules` and `--enable`.
-- Deterministic reproducibility:
-  - `paperfig rerun <run_id>` replays a run deterministically from saved artifacts.
-  - `paperfig diff <run_id_1> <run_id_2>` compares run metrics and writes `diff.json`.
-- Contributor mode:
-  - `paperfig generate ... --contrib` writes planner notes, critic notes, `CONTRIBUTING_NOTES.md`, and `contrib.log`.
-- Windows PNG enablement:
-  - `paperfig doctor --fix png --verify` prints guided setup and verification steps.
-  - PNG export warnings point to `paperfig doctor --fix png`.
+## What's New In v0.4.0
+- Figure contracts:
+  - Each figure emits `contract.json` and is validated during critique and export.
+- Static HTML inspector:
+  - `paperfig inspect --html` builds a self-contained inspector per run.
+- Plugin registry:
+  - `paperfig plugins list` and `paperfig plugins validate` surface critique and repro plugins.
+- Regression detection:
+  - `paperfig regress <paper_v1> <paper_v2>` produces `regression_report.json`.
+- Journal mode:
+  - `paperfig generate ... --mode journal:neurips` enforces stricter gates and required figure kinds.
 
 ## What You Get
 - Generated figures (SVG and optional transparent PNG)
 - LaTeX include snippets
 - Captions and figure plans
 - Traceability mapping from figure elements to source text spans
+- Figure contracts (`contract.json`) per figure
+- Static HTML inspector (`runs/<run_id>/inspect/index.html`) per run
 - Governance artifacts (`docs_drift_report.json`, `architecture_critique.json`, `repro_audit.json`)
 
 Sample proof assets are committed in `docs/gallery/sample_paper`:
@@ -100,15 +100,19 @@ Full architecture documentation and flow diagrams live in `docs/architecture`.
 - `paperfig generate`
 - `paperfig rerun`
 - `paperfig diff`
+- `paperfig regress`
 - `paperfig critique`
 - `paperfig export`
 - `paperfig doctor`
 - `paperfig inspect`
+- `paperfig inspect --html`
 - `paperfig docs regenerate`
 - `paperfig docs check`
 - `paperfig templates list`
 - `paperfig templates validate`
 - `paperfig templates lint`
+- `paperfig plugins list`
+- `paperfig plugins validate`
 - `paperfig critique-architecture`
 - `paperfig audit`
 - `paperfig lab init`
@@ -134,13 +138,19 @@ Full architecture documentation and flow diagrams live in `docs/architecture`.
 Each run creates a `runs/<run_id>/` workspace containing:
 - `figures/<figure_id>/figure.svg`
 - `figures/<figure_id>/traceability.json`
+- `figures/<figure_id>/contract.json`
 - `captions.txt`
 - `inspect.json`
+- `inspect/index.html` and `inspect/manifest.json` when `paperfig inspect --html` is used
 - `docs_drift_report.json`
 - `architecture_critique.json`
 - `repro_audit.json`
+- `plugins.json`
+- `journal_profile.json` when journal mode is enabled
 - `planner_notes.md`, `CONTRIBUTING_NOTES.md`, and `contrib.log` when `--contrib` is enabled
 - `exports/` with PNG, SVG, LaTeX snippets, and `export_report.json`
+
+Regression reports are written to `runs/<regress_run_id>/regression_report.json`.
 
 ## Configuration
 Default config lives in `paperfig.yaml`:
@@ -177,6 +187,11 @@ See:
 - `docs/templates/HOW_TO_ADD_A_FLOW.md`
 - `docs/templates/DOMAIN_PACKS.md`
 - `docs/platform/WINDOWS_PNG.md`
+- `docs/features/FIGURE_CONTRACTS.md`
+- `docs/features/HTML_INSPECTOR.md`
+- `docs/features/PLUGINS.md`
+- `docs/features/REGRESSION.md`
+- `docs/features/JOURNAL_MODE.md`
 
 ## Publish Troubleshooting
 - Package name on PyPI is `paperfigg` (not `paperfig`).

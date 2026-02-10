@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FigureContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "schema_version",
+    "run_id",
+    "figure_id",
+    "title",
+    "kind",
+    "template_id",
+    "order",
+    "abstraction_level",
+    "required_sections",
+    "source_spans",
+    "traceability_requirements",
+    "invariants",
+    "created_at"
+  ],
+  "properties": {
+    "contract_id": {"type": "string"},
+    "schema_version": {"type": "string"},
+    "run_id": {"type": "string"},
+    "figure_id": {"type": "string"},
+    "title": {"type": "string"},
+    "kind": {"type": "string"},
+    "template_id": {"type": "string"},
+    "order": {"type": "integer"},
+    "abstraction_level": {"type": "string"},
+    "required_sections": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "source_spans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["section", "start", "end", "quote"],
+        "properties": {
+          "section": {"type": "string"},
+          "start": {"type": "integer"},
+          "end": {"type": "integer"},
+          "quote": {"type": "string"}
+        }
+      }
+    },
+    "traceability_requirements": {"type": "object"},
+    "invariants": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "created_at": {"type": "string"}
+  }
+}

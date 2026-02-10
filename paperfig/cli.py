@@ -11,7 +11,15 @@ from typing import List, Optional
 
 import typer
 
-from paperfig import __version__
+try:
+    from paperfig import __version__
+except Exception:
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        __version__ = _pkg_version("paperfigg")
+    except Exception:
+        __version__ = "0.4.0"
 
 PACKAGE_NAME = "paperfigg"
 from paperfig.agents.architecture_critic import SEVERITY_ORDER
@@ -19,9 +27,12 @@ from paperfig.agents.critic import CriticAgent
 from paperfig.command_catalog import get_command_catalog
 from paperfig.lab.orchestrator import LabOrchestrator
 from paperfig.pipeline.orchestrator import Orchestrator
+from paperfig.plugins.registry import list_plugins as list_registered_plugins
+from paperfig.plugins.registry import validate_plugins as validate_registered_plugins
 from paperfig.templates.lint import lint_template_catalog
 from paperfig.templates.loader import load_template_catalog, validate_template_catalog
 from paperfig.utils.config import load_config
+from paperfig.journals import load_journal_profile
 from paperfig.utils.paperbanana import PaperBananaClient
 from paperfig.utils.pdf_parser import parse_paper
 from paperfig.utils.types import FigurePlan, PaperContent, PaperSection
@@ -30,10 +41,12 @@ app = typer.Typer(help="Generate publication-ready figures from research papers.
 docs_app = typer.Typer(help="Documentation regeneration and drift checks.")
 templates_app = typer.Typer(help="Flow template utilities.")
 lab_app = typer.Typer(help="Autonomous research lab workflows.")
+plugins_app = typer.Typer(help="Plugin registry utilities.")
 
 app.add_typer(docs_app, name="docs")
 app.add_typer(templates_app, name="templates")
 app.add_typer(lab_app, name="lab")
+app.add_typer(plugins_app, name="plugins")
 
 
 def _version_callback(value: bool) -> None:
@@ -233,6 +246,8 @@ def _render_doctor_output(report: dict) -> None:
             f"(required failures: {report.get('required_failures', 0)}, "
             f"optional failures: {report.get('optional_failures', 0)})"
         )
+        if any("paperfig doctor --fix png" in str(check.get("message", "")) for check in checks):
+            console.print("Hint: paperfig doctor --fix png")
     except Exception:
         typer.echo("paperfig doctor")
         for check in checks:
@@ -247,6 +262,8 @@ def _render_doctor_output(report: dict) -> None:
             f"(required failures: {report.get('required_failures', 0)}, "
             f"optional failures: {report.get('optional_failures', 0)})"
         )
+        if any("paperfig doctor --fix png" in str(check.get("message", "")) for check in checks):
+            typer.echo("Hint: paperfig doctor --fix png")
 
 
 @app.command()
@@ -255,7 +272,7 @@ def generate(
     mode: str = typer.Option(
         "auto",
         "--mode",
-        help="PaperBanana execution mode: auto, mock, or real.",
+        help="PaperBanana execution mode: auto, mock, real, or journal:<profile>.",
     ),
     run_root: Path = typer.Option(Path("runs"), help="Root directory for run outputs"),
     max_iterations: int = typer.Option(3, help="Maximum generation iterations per figure"),
@@ -286,8 +303,21 @@ def generate(
         help="Contributor mode: verbose artifacts, planner/critic notes, and run CONTRIBUTING_NOTES.",
     ),
 ) -> None:
-    if mode not in {"auto", "mock", "real"}:
-        raise typer.BadParameter("mode must be one of: auto, mock, real")
+    journal_profile = None
+    if mode.startswith("journal:"):
+        profile_id = mode.split(":", 1)[1].strip()
+        if not profile_id:
+            raise typer.BadParameter("journal mode requires a profile name, e.g. journal:neurips")
+        journal_profile = load_journal_profile(profile_id)
+        max_iterations = journal_profile.max_iterations
+        quality_threshold = journal_profile.quality_threshold
+        dimension_threshold = journal_profile.dimension_threshold
+        template_pack = journal_profile.template_pack or template_pack
+        arch_critique_block_severity = journal_profile.arch_critique_block_severity
+        repro_audit_mode = journal_profile.repro_audit_mode
+        mode = "auto"
+    elif mode not in {"auto", "mock", "real"}:
+        raise typer.BadParameter("mode must be one of: auto, mock, real, journal:<profile>")
     if arch_critique_mode not in {"inline", "off"}:
         raise typer.BadParameter("arch_critique_mode must be one of: inline, off")
     if arch_critique_block_severity not in SEVERITY_ORDER:
@@ -313,6 +343,7 @@ def generate(
             arch_critique_mode=arch_critique_mode,
             arch_critique_block_severity=arch_critique_block_severity,
             repro_audit_mode=repro_audit_mode,
+            journal_profile=journal_profile,
         )
         run_id = orchestrator.generate(paper_path, contrib=contrib)
     except RuntimeError as exc:
@@ -424,6 +455,42 @@ def diff(
     )
     typer.echo(f"Changed figures: {len(report.get('changed_figures', []))}")
     typer.echo(f"Changed JSON artifacts: {len(report.get('changed_artifacts', []))}")
+
+
+@app.command()
+def regress(
+    paper_v1: Path = typer.Argument(..., exists=True, help="Baseline paper (v1) path"),
+    paper_v2: Path = typer.Argument(..., exists=True, help="Comparison paper (v2) path"),
+    mode: str = typer.Option("mock", "--mode", help="PaperBanana execution mode: auto, mock, or real."),
+    run_root: Path = typer.Option(Path("runs"), help="Root directory for run outputs"),
+    output_dir: Optional[Path] = typer.Option(None, help="Optional output directory for regression report"),
+    as_json: bool = typer.Option(False, "--as-json", help="Print regression report as JSON"),
+) -> None:
+    if mode not in {"auto", "mock", "real"}:
+        raise typer.BadParameter("mode must be one of: auto, mock, real")
+
+    previous_mock_mode = os.getenv("PAPERFIG_MOCK_PAPERBANANA")
+    if mode == "mock":
+        os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "1"
+    elif mode == "real":
+        os.environ["PAPERFIG_MOCK_PAPERBANANA"] = "0"
+
+    try:
+        orchestrator = Orchestrator(run_root=run_root)
+        report = orchestrator.regress(paper_v1, paper_v2, output_dir=output_dir)
+    finally:
+        if mode in {"mock", "real"}:
+            if previous_mock_mode is None:
+                os.environ.pop("PAPERFIG_MOCK_PAPERBANANA", None)
+            else:
+                os.environ["PAPERFIG_MOCK_PAPERBANANA"] = previous_mock_mode
+
+    if as_json:
+        typer.echo(json.dumps(report, indent=2))
+        return
+
+    typer.echo(f"Regression report: {Path(report.get('report_dir', '')) / 'regression_report.json'}")
+    typer.echo(report.get("summary", ""))
 
 
 @app.command()
@@ -594,6 +661,7 @@ def inspect(
     run_id: str = typer.Argument(..., help="Run ID to inspect"),
     run_root: Path = typer.Option(Path("runs"), help="Root directory for run outputs"),
     as_json: bool = typer.Option(False, "--as-json", help="Print the full summary JSON"),
+    html: bool = typer.Option(False, "--html", help="Generate a self-contained HTML inspector."),
     failures_only: bool = typer.Option(
         False,
         "--failures-only",
@@ -629,6 +697,10 @@ def inspect(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         typer.echo(f"Summary written to: {output_path}")
+
+    if html:
+        html_path = orchestrator.inspect_html(run_id)
+        typer.echo(f"HTML inspector written to: {html_path}")
 
     if as_json:
         typer.echo(json.dumps(summary, indent=2))
@@ -739,6 +811,36 @@ def templates_lint(
             typer.echo(f"Error: {error}")
         raise typer.Exit(code=1)
     typer.echo("Flow templates satisfy flow_template.schema.json.")
+
+
+@plugins_app.command("list")
+def plugins_list(
+    kind: Optional[str] = typer.Option(
+        None,
+        help="Optional plugin kind filter: critique_rule or repro_check.",
+    ),
+) -> None:
+    plugins = list_registered_plugins(kind=kind)
+    if not plugins:
+        typer.echo("No plugins found.")
+        return
+    for plugin in plugins:
+        typer.echo(f"- {plugin.plugin_id} ({plugin.kind}): {plugin.description}")
+
+
+@plugins_app.command("validate")
+def plugins_validate(
+    kind: Optional[str] = typer.Option(
+        None,
+        help="Optional plugin kind filter: critique_rule or repro_check.",
+    ),
+) -> None:
+    errors = validate_registered_plugins(kind=kind)
+    if errors:
+        for error in errors:
+            typer.echo(f"Error: {error}")
+        raise typer.Exit(code=1)
+    typer.echo("Plugin registry is valid.")
 
 
 @lab_app.command("init")
