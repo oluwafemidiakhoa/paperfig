@@ -1,13 +1,16 @@
 # paperfig
-[![CI](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/ci.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/ci.yml)
-[![Docs Drift](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/docs-drift.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/docs-drift.yml)
-[![Publish](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/publish.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfig/actions/workflows/publish.yml)
+[![CI](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/ci.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/ci.yml)
+[![Docs Drift](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/docs-drift.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/docs-drift.yml)
+[![Publish](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/publish.yml/badge.svg)](https://github.com/oluwafemidiakhoa/paperfigg/actions/workflows/publish.yml)
 
 `paperfig` is a production-grade CLI that converts research papers (PDF or Markdown) into publication-ready academic figures using an agentic planning -> generation -> critique pipeline.
 
 The core differentiator is that agent reasoning and architecture decisions are stored as versioned repo artifacts (architecture docs, flows, Mermaid diagrams, templates, audits) so humans and agents can evolve the system together.
 
 ## Install
+> **Warning**
+> `paperfig` on PyPI is a different project; install `paperfigg`. The CLI command remains `paperfig`.
+
 - Standard CLI + PNG export:
   - `pip install "paperfigg[cli,png]"`
 - Developer tooling:
@@ -180,6 +183,6 @@ See:
 - If publish fails with "file already exists", rerun is safe because publish uses `skip-existing: true`.
 - If publish fails with OIDC/token project mismatch:
   - verify Trusted Publisher is configured for project `paperfigg`
-  - owner/repo must be `oluwafemidiakhoa/paperfig`
+  - owner/repo must be `oluwafemidiakhoa/paperfigg`
   - workflow must be `publish.yml`
   - environment name must be `pypi`

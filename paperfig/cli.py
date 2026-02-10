@@ -12,6 +12,8 @@ from typing import List, Optional
 import typer
 
 from paperfig import __version__
+
+PACKAGE_NAME = "paperfigg"
 from paperfig.agents.architecture_critic import SEVERITY_ORDER
 from paperfig.agents.critic import CriticAgent
 from paperfig.command_catalog import get_command_catalog
@@ -225,6 +227,7 @@ def _render_doctor_output(report: dict) -> None:
 
         console = Console()
         console.print(table)
+        console.print(f"Package: {PACKAGE_NAME} | Command: paperfig")
         console.print(
             f"Overall: {'PASS' if report.get('passed') else 'FAIL'} "
             f"(required failures: {report.get('required_failures', 0)}, "
@@ -237,6 +240,7 @@ def _render_doctor_output(report: dict) -> None:
                 f"- {check.get('check')}: {check.get('status')} "
                 f"(required={check.get('required')}) {check.get('message')}"
             )
+        typer.echo(f"Package: {PACKAGE_NAME} | Command: paperfig")
         typer.echo(
             "Overall: "
             f"{'PASS' if report.get('passed') else 'FAIL'} "
